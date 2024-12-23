@@ -1,0 +1,77 @@
+---
+title: "Untitled"
+author: "Na SeungChan"
+date: "2022-10-27"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+```
+
+
+## Problem 3
+
+```{r}
+hn19<- haven::read_sas("HN19_ALL.sas7bdat")
+head(hn19)
+```
+
+
+## (a)
+
+
+```{r}
+hn19b <- hn19 %>%
+  select(ID, DF2_dg, N_CHOL) %>%
+  filter(!is.na(DF2_dg), !is.na(N_CHOL))
+  
+max(hn19b$N_CHOL)
+
+ggplot(data = hn19b) +
+  geom_boxplot(aes(x = DF2_dg, y = N_CHOL, group = DF2_dg)) + 
+  coord_cartesian(ylim = c(-10,1000))
+#colnames(hn19)
+```
+
+
+
+## (b)
+
+Francisca A. de Leeuw, Wiesje M. van der Flier, Betty M. Tijms, Philip Scheltens, Vera M. Mendes, Bruno Manadas, Jörgen Bierau, Nick van Wijk, Ellen G.H.M. van den Heuvel, M. Hasan Mohajeri, Charlotte E. Teunissen, Maartje I. Kester, Specific Nutritional Biomarker Profiles in Mild Cognitive Impairment and Subjective Cognitive Decline Are Associated With Clinical Progression: The NUDAD Project, Journal of the American Medical Directors Association, Volume 21, Issue 10, 2020 Pages 1513.e1-1513.e17에서 제시되었듯이, '콜레스테롤 섭취'와 '인지적 기능 저하'는 연관이 있다. 이와 같은 '콜레스테롤 섭취'가 우울증 등 정신적 측면에서 인지적 기능 저하 외 영향을 미치는 영역이 있는지 확인하고자 한다.
+
+## (c)
+
+본인이 건강하지 않은 방식으로 생활하고 있다고 인식하는 사람 역시, '건강한 방식의 삶'에 대해 의학계와 크게 의견이 다르지는 않을 것이다. 즉 개인의 주관적 건강인식과 실제 그 개인의 건강은 상당한 상관관계를 지닐 것이라고 추론할 수 있다.(오영희(Young-Hee Oh),배화옥(Hwa-ok Bae),and 김윤신(Yoon-Shin Kim). "우리나라 노인의 주관적 건강인식과 신체적 및 정신적 기능상태의 관련성 연구." 한국노년학 26.3 (2006): 461-476. )
+
+이때, '구체적 분야에 대한' 개인의 주관적 건강인식을 활용하여 암, 우울증, 충치 개수 등을 진단할 수 있는 모델이 있는지 확인하고자 한다.
+
+해당 분석에서 중요한 것은 인과관계의 오류 문제이다. 즉, '암에 걸렸기 때문에 자신의 주관적 건강인식이 낮아졌'을 수 있고, 반대로 '평소에 건강하지 않게 살기 때문에 자신의 주관적 건강인식이 낮아졌을 수 있'다. 이를 체크하기 위해서는, '주관적 건강인식 자료'와 '그 시점에서의 건강검진 결과'가 필요하다. 
+
+BO1(주관적 체형인식), D_1_1(주관적 건강인지)의 두 가지 변수를 우선 확인한다. 단, 주관적 체형인식 자체가 주관적 건강인지에 강한 영향을 끼치는 변수일 수 있으므로, 주관적 체형인식과 주관적 건강인지의 관계를 확인한다.
+
+```{r}
+hn19c <- hn19 %>%
+  select(ID, BO1, D_1_1) %>%
+  filter(BO1 != 8, BO1 != 9, D_1_1 != 8, D_1_1 != 9)
+
+mosaicplot(~BO1+D_1_1, data = hn19c, color=TRUE)
+```
+
+한편, '주관적 건강인지'와 대표적인 성인병인 고혈압, 당뇨 등의 상관관계를 확인한다. 이는 앞서 살펴본 이슈가 있다.
+
+```{r}
+hn19d <- hn19 %>%
+  select(ID, D_1_1, HE_sbp, HE_dbp) %>%
+  filter(D_1_1 != 8, D_1_1 != 9)
+
+ggplot(data = hn19d) +
+  geom_boxplot(aes(x = HE_sbp, group = D_1_1))
+```
+
+이외, 근무 시간 등 위와 같은 질병에 영향을 끼치는 요인을 추가로 체크할 수 있을 것이다.

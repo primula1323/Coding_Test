@@ -1,0 +1,154 @@
+---
+title: "Econometrics HW3 Part 3"
+author: "Na SeungChan"
+mainfont: UnDotum
+monofont: UnShinmun
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('tidyverse')
+library('estimatr')
+```
+
+
+## HW2 Q3 : Previous Data Analysis 
+
+
+
+해당 파트는 HW2의 제출 내용을 그대로 복사해 온 것으로, 데이터 전처리의 편의를 위해서만 사용되고 문제풀이의 내용이 아님.
+
+
+
+```{r}
+dataset <- read.csv('co2-emissions-vs-gdp.csv') %>%
+  filter(Year == 2018) %>% 
+  filter(Code != '', Code != 'OWID_WRL')
+
+dataset1 <- read.csv('energy.csv') %>%
+  filter(Year == 2018) %>% 
+  filter(Code != '', Code != 'OWID_WRL')
+
+full_data <- left_join(dataset, dataset1)
+glimpse(full_data)
+```
+
+
+Data form our world in data. Focused on countries in 2018 only.
+First dataset is from https://ourworldindata.org/grapher/co2-emissions-vs-gdp 
+, Second dataset is from https://ourworldindata.org/energy
+
+full_data are the merged data of above two.
+
+
+```{r}
+lm_a <- lm_robust(Annual.CO..emissions..per.capita. ~ GDP.per.capita, data = full_data)
+summary(lm_a)
+
+ggplot(data = full_data, aes(x = GDP.per.capita, y = Annual.CO..emissions..per.capita.)) +
+  geom_point() +
+  geom_abline(intercept = 0.5783892, slope = 0.0002198)
+```
+
+
+Research Question is about the causal correlation between the GDP per capita and annual CO2 emission per capita.
+
+se(intercept) : 2.564e-01, se(slope) : 1.863e-05
+
+p-value for slope Pr(>|t|) = <2.2e-16 ***. This means the significance of the regression model.
+
+
+
+Add additional variables X2, ..., Xk that may affect Y and estimate the multiple regression model. Compare the coefficient estimate of X1 with (i). Note that the main research question is unchanged. The additional variables are supposed to eliminate possible omitted variable bias in the simple regression.
+
+
+```{r}
+lm_b <- lm_robust(Annual.CO..emissions..per.capita. ~ GDP.per.capita + Primary.energy.consumption.per.capita..kWh.person. , data = full_data)
+summary(lm_b)
+```
+
+
+Now I added X2 as 'energy use per capita.' This can be helpful because some of developed countries may use more non-fossil fuel energy.
+
+p-value for 'energy use per capita' is smaller, and adjusted R^2 is bigger for the second model. But, 'the usage of eco-frendily energy' may be more helpful for this purpose, but making data like that was seriouly hard data wrangling(keys are not consistent). Making those data can improve the quality of this research.
+
+
+
+## HW3 - Q3
+
+
+You may continue on your previously collected dataset, or select another cross-
+sectional data. Let the variables of interest be Y and X1. You may also consider X2, ..., Xk that may directly affect Y . The main research question is ”Does X1 affect Y ? If so, how much?”.
+
+(i) Conduct a nonlinear regression of Y on X1 controlling for X2, ..., Xk and draw the fitted curve on the scatter plot and compare it with the fitted line of the linear regression.
+
+(ii)Provide the standard errors for the point estimates. Interpret the result.
+
+
+### HW3 - Q3.(i)
+
+
+```{r}
+temp_med <- median(na.omit(full_data$Primary.energy.consumption.per.capita..kWh.person.))
+
+full_data_bined <- full_data %>%
+  mutate(HiEnergy = ifelse(Primary.energy.consumption.per.capita..kWh.person. >= temp_med, 1, 0))
+
+remove(temp_med)
+
+head(full_data_bined)
+```
+
+
+Hienergy 변수를 생성하여 통제를 진행하였다. 기준은 na.omit를 사용하여 na values인 국가들을 제외한 뒤의 중앙값이다. 단, 이와 같은 'NA 무작정 제거'가 통계적으로 문제가 될 수 있는데, 해당 데이터에서는 국가의 행정력이 잘 미치지 못하는 국가일수록 na가 발생할 가능성이 높아 NA에 체계적인 경향이 발생할 수 있기 때문이다. 차후 이와 같은 문제를 검토하기 위한 통계적 기법에 따른 연구를 수행하여야 할 것이다.
+
+
+```{r}
+lm_c <- lm_robust(log(Annual.CO..emissions..per.capita.) ~ GDP.per.capita + HiEnergy + GDP.per.capita:HiEnergy , data = full_data_bined)
+summary(lm_c)
+lm_c$coefficients
+```
+
+```{r}
+plot(full_data_bined$GDP.per.capita, log(full_data_bined$Annual.CO..emissions..per.capita.))
+
+abline(coef = c(lm_c$coefficients[1], lm_c$coefficients[2]))
+
+abline(coef = c(lm_c$coefficients[1] + lm_c$coefficients[3], lm_c$coefficients[2] + lm_c$coefficients[4]), col = 'green')
+
+ggplot(data = full_data, aes(x = GDP.per.capita, y = Annual.CO..emissions..per.capita.)) +
+  geom_point() +
+  geom_abline(intercept = 0.5783892, slope = 0.0002198)
+```
+
+
+
+아래쪽 그림의 linear model과 비교했을 때 교호작용 term을 포함한 model은 가파른 기울기의 한 직선(Hi = 0)과 상대적으로 완만한 직선(Hi = 1)으로 구분되며, 교호작용 term의 유의성이 있을 것이라고 추측할 수 있다.
+
+
+
+### HW3 - Q3.(ii)
+
+
+```{r}
+summary(lm_c)
+```
+
+
+
+HiEnergy = 0인 경우의 회귀선은 log(y) = -1.5929 + 0.0002086x
+
+
+HiEnergy = 1인 경우의 회귀선은 log(y) = `lm_c$coefficients[1] + lm_c$coefficients[3]` +  `lm_c$coefficients[2] + lm_c$coefficients[4]`x
+
+
+
+Interpret the result.
+
+
+즉 x의 변화량으로 E(Y|D,X)의 변화량을 나눈 값은 `lm_c$coefficients[2]` + `lm_c$coefficients[3]`D이다.
+
+

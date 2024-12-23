@@ -1,0 +1,154 @@
+---
+title: "Regression and Lab HW 5"
+author: "Na SeungChan"
+date: "`r Sys.Date()`"
+mainfont: UnDotum
+monofont: UnShinmun
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('tidyverse')
+library('MPV')
+library('car')
+```
+
+## Q1
+
+
+### Importing Data
+
+
+```{r cars}
+b1 <- c(2.60, 31.0, 21)
+b2 <- c(2.40, 31.0, 21)
+b3 <- c(17.32, 31.5, 24)
+b4 <- c(15.60, 31.5, 24)
+b5 <- c(16.12, 31.5, 24)
+b6 <- c(5.36, 30.5, 22)
+b7 <- c(6.19, 31.5, 22)
+b8 <- c(10.17, 30.5, 23)
+b9 <- c(2.62, 31, 21.5)
+b10 <- c(2.98, 30.5, 21.5)
+b11 <- c(6.92, 31, 22.5)
+b12 <- c(7.06, 30.5, 22.6)
+Beverages <- as_tibble(rbind(b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12)) %>%
+  rename(Carbonation = V1, Temperature = V2, Pressure = V3)
+```
+
+
+### (a)
+
+
+```{r}
+fit11 <- lm(Carbonation ~ poly(Temperature, Pressure, degree = 2, raw = TRUE), data = Beverages)
+summary(fit11)
+```
+
+
+### (b)
+
+
+From summary of fit1, we can get F-statistic 149.2 on (5,6) DF. p-value is 3.305e-06, and regression is significant.
+
+
+### (c)
+
+
+lack_of_fit test
+
+
+```{r}
+fit13 <- lm(Carbonation ~ Temperature + Pressure, data = Beverages)
+
+anova(fit11, fit13)
+```
+
+no lack of fit.
+
+
+### (d)
+
+
+t-value for interaction term is -1.220. Interaction term does not significantly contribute to the model.
+
+
+```{r}
+fit12 <- lm(Carbonation ~ poly(Temperature, degree = 2, raw = TRUE) + poly(Pressure, degree = 2, raw = TRUE), data = Beverages)
+summary(fit12)
+
+```
+
+
+Adjusted R-Squared also does not changed significantly.
+
+
+### (e)
+
+
+Fit the multiple linear regression model.
+
+
+```{r}
+summary(fit13)
+```
+
+
+quadratic term for Pressure is significant, but for Temperature intercept isn't significant.
+
+
+
+## Q2
+
+
+Answer is on the 1st page of pdf file.
+
+
+
+## Q3
+
+
+### Data importing
+
+
+```{r}
+dfq3 <- na.omit(MPV::table.b3)
+```
+
+
+Trans AM, Astre has NA in x3. I just dropped all the data in Trnas AM and Astre, but additional analysis is needed for justification of droping those two data.
+
+
+### (a)
+
+
+x6, x7, x11 are categorical variable, so those variables are not included in correlation matrix.
+
+
+```{r}
+dfq3 %>% 
+  select(x1, x2, x3, x4, x5, x8, x9, x10) %>%
+  cor()
+```
+
+
+some data pairs like (x1, x2), (x1, x3), (x3, x10) show large correlation. There could be some multicolinearity and large VIFs.
+
+
+### (b)
+
+
+```{r}
+lmq3 <- lm(y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 + x11, data = dfq3)
+vif(lmq3)
+```
+
+variables with VIF > 10 : x1, x2, x3, x7, x8, x10, x11.
+
+This model shows serious multicolinearity problems.
+
+
+

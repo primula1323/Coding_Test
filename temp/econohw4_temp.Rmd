@@ -1,0 +1,77 @@
+---
+title: "Econometrics HW4 Q3"
+author: "Na SeungChan"
+mainfont: UnDotum
+monofont: UnShinmun
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('tidyverse')
+library('estimatr')
+library('AER')
+set.seed(100)
+```
+
+
+
+## Data Importing
+
+
+```{r}
+raw_data <- readxl::read_xlsx('./fertility.xlsx')
+q32_data <- raw_data %>%
+  mutate(twoboys = ifelse(boy1st == 1&boy2nd == 1, 1, 0), twogirls = ifelse(boy1st == 0&boy2nd == 0, 1, 0))
+```
+
+이때, Q3.2에서 요구하는 'twoboys' 변수와 'twogirls' 변수를 생성하기 위해 data wrangling을 하였다.
+
+
+
+## Q3.1
+
+
+반응변수 Y : 어머니의 노동공급 weeksm1
+독립변수 X : 2명 넘는 아이 갖기 morekids (내생성 문제 존재)
+X를 포착하기 위한 도구변수 Z : samesex(첫 두 아이가 같은 성별이면 1, 그렇지 않으면 0)
+control variables : agem1(출산 연령), black, hispan, othrace (인종 dummy)
+
+우선 OLS estimation result를 계산한다. 이는 weeksm1을 morekids 변수만을 사용해 분석하고 내생성 문제를 고려하지 않은 분석이 된다. 단, 이 경우에도 age와 race는 control variables로 고려하였다. variance-robust 추정량을 얻기 위해 일반적인 lm() function이 아닌 lm_robust() function을 사용하였다.
+
+```{r}
+lm_q11 <- lm_robust(weeksm1 ~ morekids + agem1 + black + hispan + othrace, data = raw_data)
+summary(lm_q11)
+lm_q11$p.value
+```
+
+
+다음으로 IV estimator를 사용한다. IV estimation을 위해 AER packages의 ivreg() 함수를 사용하였다.
+
+```{r}
+lm_q12 <- ivreg(weeksm1 ~ morekids + agem1 + black + hispan + othrace | samesex + agem1 + black + hispan + othrace, data = raw_data)
+summary(lm_q12)
+```
+
+앞서의 분석에서는 내생성 문제가 확실히 크게 존재했음을 t value를 비교하여 파악할 수 있다. IV Estimator를 활용한 경우에도 인과관계가 존재한다고 결론지을 수 있지만, p-value가 3e-06 수준으로 앞서의 극단적 수치에 비해서는 크게 낮아졌다.
+
+
+
+### Q3.2
+
+
+Data importing part에서 두 변수를 추가한 `q32_data` dataset을 사용하여 분석을 진행한다. 
+
+반응변수 Y : 어머니의 노동공급 weeksm1
+독립변수 X : 2명 넘는 아이 갖기 morekids (내생성 문제 존재)
+X를 포착하기 위한 도구변수 Z : twoboys, twogirls (morekids = constant + b1twoboys + b2*twogirls + errors)
+control variables : agem1(출산 연령), black, hispan, othrace (인종 dummy)
+
+```{r}
+lm_q21 <- ivreg(weeksm1 ~ morekids + agem1 + black + hispan + othrace | twoboys + twogirls + agem1 + black + hispan + othrace, data = q32_data)
+summary(lm_q21)
+```
+
+여전히 유의하다. 이와 같은 약간의 차이가 발생하는 것은 두 개의 모수 b1, b2를 모두 추정하게 되어 각 추정의 정확성이 낮아진 것으로 보인다.
